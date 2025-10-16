@@ -1,0 +1,118 @@
+CODING AND IMPLEMETATION
+
+# For Google Colab users: upload Excel file from google.colab import files
+uploaded = files.upload()
+
+
+# Import necessary libraries import pandas as pd
+import matplotlib.pyplot as plt from tabulate import tabulate
+
+# Load the Excel file
+file_name = list(uploaded.keys())[0] df = pd.read_excel(file_name)
+
+# Clean column names
+df.columns = df.columns.str.strip()
+
+# Automatically detect TOTAL and RESULT columns total_columns = [col for col in df.columns if 'TOTAL' in col.upper()]
+result_columns = [col for col in df.columns if 'RESULT' in col.upper()] subject_columns = [col for col in df.columns if col.startswith('S') and col.endswith('M')]
+
+# Check that the necessary columns exist if not total_columns or not result_columns:
+print("❌TOTAL or RESULT columns not found. Please check the Excel sheet.")
+else:
+
+
+# Function to calculate rank
+ 
+def calculate_rank(dataframe, total_col='Total'):
+dataframe['Rank'] = dataframe[total_col].rank(method='min', ascending=False).astype(int) return dataframe.sort_values('Rank')
+
+# 1. Top N Rank Holders def top_rankers(n):
+df['Total'] = df[total_columns].sum(axis=1) ranked = calculate_rank(df.copy(), 'Total')
+print(tabulate(ranked[['STUDENT NAME', 'REG NO', 'Total', 'Rank']].head(n), headers='keys', tablefmt='fancy_grid'))
+
+# 2. Full Rank List (Passed Students Only) def passed_students_ranklist():
+df_passed = df[(df[result_columns] == 'PASS').all(axis=1)].copy() df_passed['Total'] = df_passed[total_columns].sum(axis=1) ranked = calculate_rank(df_passed, 'Total')
+print(tabulate(ranked[['STUDENT NAME', 'REG NO', 'Total', 'Rank']], headers='keys', tablefmt='fancy_grid'))
+
+# 3. List of Passed Students def list_passed_students():
+df_passed = df[(df[result_columns] == 'PASS').all(axis=1)] print(tabulate(df_passed[['STUDENT NAME', 'REG NO']], headers='keys',
+tablefmt='grid'))
+
+# 4. Failed Subjects Report def failed_subjects():
+for _, row in df.iterrows():
+failed = [subj for subj in subject_columns if 0 < row[subj] < 40] if failed:
+print(f"\n{row['STUDENT NAME']} (REG NO: {row['REG NO']}) failed in: {',
+ 
+'.join(failed)}")
+
+
+# 5. Detailed Report
+def detailed_report(reg_no):
+student_df = df[df['REG NO'] == reg_no] if student_df.empty:
+print("❌Student not found.")
+return
+
+
+student = student_df.iloc[0]
+print(f"\nName: {student['STUDENT NAME']}") print(f"Reg No: {student['REG NO']}")
+
+for subject in subject_columns: mark = student[subject]
+result = 'Fail' if 0 < mark < 40 else 'Pass' print(f"{subject}: {mark} - {result}")
+
+print("\nSemester Totals:") for col in total_columns:
+sem_name = col.replace('TOTAL', '').strip() result_col = col.replace('TOTAL', 'RESULT').strip()
+result_value = student[result_col] if result_col in student else 'N/A' print(f"{sem_name}: {student[col]} ({result_value})")
+
+overall_total = student[total_columns].sum() print(f"\nOverall Total: {overall_total}")
+
+if all(student[result] == 'PASS' for result in result_columns): df_passed = df[(df[result_columns] == 'PASS').all(axis=1)].copy() df_passed['Total'] = df_passed[total_columns].sum(axis=1)
+ 
+df_passed = calculate_rank(df_passed, 'Total')
+student_rank = df_passed[df_passed['REG NO'] == reg_no]['Rank'].values[0] print(f"Rank among passed students: {student_rank}")
+else:
+print("Student did not pass all semesters. No rank available.")
+
+
+# 6. Plotting graphs
+def plot_top_n_students(n):
+df['Total'] = df[total_columns].sum(axis=1) ranked = calculate_rank(df.copy(), 'Total')
+top_n = ranked[['STUDENT NAME', 'Total']].head(n) plt.figure(figsize=(10, 5))
+plt.plot(top_n['STUDENT NAME'], top_n['Total'], marker='o', linestyle='-', color='green') plt.title(f'Top {n} Students - Line Graph')
+plt.xlabel('Student Name') plt.ylabel('Total Marks') plt.xticks(rotation=45) plt.grid(True) plt.tight_layout() plt.show()
+
+def plot_bottom_n_students(n):
+df['Total'] = df[total_columns].sum(axis=1) ranked = calculate_rank(df.copy(), 'Total')
+bottom_n = ranked[['STUDENT NAME', 'Total']].tail(n) plt.figure(figsize=(12, 6))
+plt.plot(bottom_n['STUDENT NAME'], bottom_n['Total'], marker='o', linestyle='-', color='red')
+plt.title(f'Bottom {n} Students - Line Graph') plt.xlabel('Student Name')
+plt.ylabel('Total Marks')
+ 
+plt.xticks(rotation=45) plt.grid(True) plt.tight_layout() plt.show()
+
+# Menu
+def menu(): while True:
+print("\n=== STUDENT PERFORMANCE ANALYZER ===")
+print("1. Top 3 Rank Holders (Overall)") print("2. Top 10 Rank Holders (Overall)") print("3. Full Rank List (Passed Students)") print("4. List of Passed Students")
+print("5. Failed Subjects Report")
+print("6. Detailed Report for One Student") print("7. Line Graph - Top 3 Students") print("8. Line Graph - Top 10 Students") print("9. Line Graph - Bottom 30 Students") print("10. Exit")
+
+choice = input("Enter your choice (1-10): ")
+
+
+if choice == '1': top_rankers(3)
+elif choice == '2': top_rankers(10)
+elif choice == '3': passed_students_ranklist()
+elif choice == '4': list_passed_students()
+elif choice == '5':
+ 
+failed_subjects() elif choice == '6':
+reg_no = input("Enter Registration Number: ").strip() detailed_report(reg_no)
+elif choice == '7': plot_top_n_students(3)
+elif choice == '8': plot_top_n_students(10)
+elif choice == '9': plot_bottom_n_students(30)
+elif choice == '10': print("✅Exiting...") break
+else:
+print("❌Invalid choice. Please enter a number from 1 to 10.")
+
+# Run the menu menu()
+ 
